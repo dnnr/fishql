@@ -16,10 +16,11 @@ Tested instructions are still t.b.d. but the goal is:
   fisher add brettviren/fishql
 #+end_example
 
-Barring that, put the functions in your ~fish_functions_path~ and arrange to call:
+Barring that, 
 
 #+begin_src fish
-  fishql-session
+  source /path/to/fishql/config.fish
+  set fishql_db mydb
 #+end_src
 
 In your ~config.fish~.
