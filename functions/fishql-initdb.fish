@@ -57,5 +57,6 @@ function fishql-initdb -v fishql_db -d "Initialize fishql database by setting fi
       UNIQUE(session_id, command_no)
     );
     " | fishql-query
+    chown 600 $fishql_dbfile
     fishql-session
 end
