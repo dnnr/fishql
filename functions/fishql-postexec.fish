@@ -3,6 +3,12 @@ function fishql-postexec --on-event fish_postexec -d "Store final info about a c
     if test -z "$argv"
         return
     end
+    if not test -s $fishql_dbfile
+        echo "fishql: remaking lost DB file $fishql_dbfile"
+        fishql-initdb
+    end
+
+
     set -l cmd (echo $argv | sed -e "s/'/''/g")
     set -l et (date +%s)
     set -l dt (math $CMD_DURATION / 1000.0)

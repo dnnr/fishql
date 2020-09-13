@@ -1,6 +1,16 @@
 # This should be called once per session prior to any commands.
 # 
 function fishql-session -d "Start a fishql session"
+    if test -z "$fishql_db"
+        echo "fishql session: please set fishql_db"
+        return
+    end
+    if not test -s $fishql_dbfile
+        echo "Lost DB file $fishql_dbfile"
+        fishql-initdb
+    end
+
+
     set -l hn (hostname)
     set -l hni (hostname -I)
     set -l ppid (ps -o ppid -p $fish_pid)[2]

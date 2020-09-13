@@ -10,18 +10,10 @@ Because of the all the useful facilities of fish shell (events, built in command
 
 * Install
 
-FIXME: I am new to fish so still t.b.d. but the goal is:
-
 #+begin_example
   fisher add brettviren/fishql
 #+end_example
 
-Until then, clone somewhere and
-
-#+begin_src fish
-  source /path/to/fishql/config.fish
-  set fishql_db mydb
-#+end_src
 
 * Configuration
 
