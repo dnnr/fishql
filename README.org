@@ -1,16 +1,16 @@
-#+title: ~fishql~ - Fish History Query Language DB
+#+title: fishql - Fish History Query Language DB
 
 * Overview
 
-~fishql~ is a ~fish~ shell plugin to hold history in an Sqlite3 DB file.
+*fishql* is a fish shell plugin to hold history in an Sqlite3 DB file.
 
-~fishql~ is a port to ~fish~ of a previous implementation in Bash ([[https://github.com/brettviren/shist][shist]]) which itself is a clone of [[https://github.com/barabo/advanced-shell-history][ash]].  As such the ~fishql~ DB schema is compatible and in principle can interoperate with these prior works.  
+*fishql* is a port to the fish shell of a previous implementation in Bash ([[https://github.com/brettviren/shist][shist]]) which itself is a clone of [[https://github.com/barabo/advanced-shell-history][ash]].  As such the *fishql* DB schema is compatible and so in principle the DB file may be used with these prior works.  
 
-Because of the all the useful facilities of ~fish~ (events, built in command timing) this implementation is rather trivial.
+Because of the all the useful facilities of fish shell (events, built in command timing) this implementation is rather trivial.
 
 * Install
 
-FIXME: still t.b.d. but the goal is:
+FIXME: I am new to fish so still t.b.d. but the goal is:
 
 #+begin_example
   fisher add brettviren/fishql
@@ -31,49 +31,54 @@ You may set the DB name.
   set fishql_db mydb
 #+end_example
 
-This will get translated to an Sqlite3 file name that is available in ~$fishql_dbfile~.  Setting a new DB name will start a new ~fishql~ session.
+This will get translated to an SQLite3 database file name that is available in ~$fishql_dbfile~.  Setting a new DB name will start a new *fishql* session.  A new session may also be created explicilty by calling ~fishql-session~ and this command should be added to your fish config.
 
-The heavy lifting is done with the ~sqlite3~ program which by default is located in ~$PATH~.  A specific program may be made explicit:
-
-#+begin_example
-  set fishql_dbprog /path/to/your/sqlite
-#+end_example
+The heavy lifting is of course done with the ~sqlite3~ program which by default will be located in your ~$PATH~.  You may specify the program to us by setting ~fishql_dbprog~.
 
 * Usage
 
-Nominally, it runs unnoticed, quietly filling up its database.
+Nominally, *fishql* runs unnoticed watching your command line and quietly filling up its database.
 
-A raw SQL may be executed with with ~sqlite3~ or the provided wrapper ~fishql-query~.  For example, see the last 10 command entries:
+You may perform raw SQL queries on the DB with ~sqlite3~ or the provided wrapper ~fishql-query~.  For example, to see the ten most recent commands:
 
 #+begin_example
   echo "select c.command from commands as c order by -c.start_time limit 10" | fishql-query
 #+end_example
 
-Of course, raw SQL is a rather tedious to type.  Like ~shist~ and ~ash~, ~fishql~ supports definition and use of "canned queries".  A canned query simply hides away some SQL in a function so it may be invoked as a simple command like:
+Of course, raw SQL is a rather tedious to type.  Like ~shist~ and ~ash~, *fishql* supports the definition and use of "canned queries".  A canned query simply hides away some SQL in a function so it may be invoked more simply.
+
+Some canned queries will print a command which itself may be direct exceuted:
 
 #+begin_example
-  fishql-<name>
+eval (fishql-<canned>)
 #+end_example
 
-Some queries are written to load the results into ~fzf~ to allow selection and output of a part (usually the command) while others may dump the results.  
+Some queries will allow selection of a result with ~fzf~.  A ~C-c~ should exit both the selection and subsequent ~eval~.  
 
-For the former, if you wish to immediately execute the selected command you may of course do:
+Other command queries print some summary of results and are not intended to be evaluated.  
 
-#+begin_example
-eval (fishql-<name>)
-#+end_example
+Some canned batteries are included:
 
-If, while viewing the results in ~fzf~ you wanna bail simply hit ~C-c~.
+- ~fishql-here~ :: print the ~fzf~-selected command from those run from the current shell session
+- ~fishql-now~ :: print the ~fzf~-selected command from those run from the current working directory
+- ~fishql-ago <date> [<prec>]~ :: print commands and their times which were run within ~<prec>~ days of the given ~<date>~
 
-Some included canned queries are included:
 
-- ~fish-here~ :: print the ~fzf~-selected command from those run from the current shell session
-- ~fish-now~ :: print the ~fzf~-selected command from those run from the current working directory
-- ~fish-ago <date> [<prec>]~ :: print commands and their times which were run within ~<prec>~ days of the given ~<date>~
+* Possible roadmap
+
+More canned queries
+
+- [ ] ~fishql-purge~ provide something like ~history delete~
+- [ ] a query to produce fish history YAML.  See also [[https://github.com/fish-shell/fish-shell/pull/6493][this fish PR]].
+- [ ] a query to load fish history into the DB, note the current version only has command+timestamp.
+
+General features
+
+- [ ] register some ignore pattern matching to avoid populating DB with senstiive commands
 
 * Security
 
-The Sqlite3 DB file is local to your account.  Upon initialization it is made readable/writable only to your user.  Thus it may be considered as secure as any shell history files.  However, rather more information is recorded than most shells collect.  In addition to the command line itself and a time stamp, info about the current TTY, UID, SSH session, return code and other items are recorded.  Check the table schema defined in ~fishql-initdb~ for the full story.  Of course, it's up to you to accept any risk.
+The SQLite3 DB file is local to your account.  Upon initialization it is made readable/writable only to your user.  Thus it may be considered as secure as any shell history files.  However, rather more information is recorded than most shells collect.  In addition to the command line itself and a time stamp, info about the current TTY, UID, SSH session, return code and other items are recorded.  Check the table schema defined in ~fishql-initdb~ for the full story.  Of course, it's up to you to accept any risk.
 
 * License
 
