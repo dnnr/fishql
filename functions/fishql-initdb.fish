@@ -1,23 +1,23 @@
-function fishql-initdb -v fishql_db -d "Initialize fishql database by setting fishql_db"
-    #echo "fishql-init: $argv"
-    if test "$argv" != "VARIABLE SET fishql_db"
-        echo "unknown: $argv"
+function fishql-initdb -d "Initialize fishql database"
+
+    if test -z "$fishql_db"
+        echo "fishql: please set fishql_db to a DB name"
         return
     end
-    if set -q XDG_DATA_HOME
-        set -g fishql_dbfile $XDG_DATA_HOME/"$fishql_db"_fishqldb
-    else
-        set -g fishql_dbfile $HOME/."$fishql_db"_fishqldb
-    end
+
+    set -g fishql_dbfile $__fish_user_data_dir/fishql-"$fishql_db".db
+
     if test -s $fishql_dbfile
         # fixme: quiet this when done debugging
-        #echo "Existing fish history query langauge DB $fishql_db file:"
-        #echo $fishql_dbfile
+        # echo "Existing fish history query langauge DB $fishql_db file:"
+        # echo $fishql_dbfile
         fishql-session
         return
     end
-    #echo "Initialize fish history query language DB $fishql_db file:"
-    #echo $fishql_dbfile
+
+    # echo "Initialize fish history query language DB $fishql_db file:"
+    # echo $fishql_dbfile
+
     echo "
     CREATE TABLE sessions ( 
       id integer primary key autoincrement, 
@@ -57,6 +57,6 @@ function fishql-initdb -v fishql_db -d "Initialize fishql database by setting fi
       UNIQUE(session_id, command_no)
     );
     " | fishql-query
-    chown 600 $fishql_dbfile
+    chmod 600 $fishql_dbfile
     fishql-session
 end
