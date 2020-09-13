@@ -6,5 +6,3 @@ set -x _fishql_session_tty (tty)
 set -x _fishql_session_euid (id -u)
 set -x _fishql_session_start (date +%s)
 
-echo "timeout: $_fishql_timeout"
-

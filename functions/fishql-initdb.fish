@@ -11,13 +11,13 @@ function fishql-initdb -v fishql_db -d "Initialize fishql database by setting fi
     end
     if test -s $fishql_dbfile
         # fixme: quiet this when done debugging
-        echo "Existing fish history query langauge DB $fishql_db file:"
-        echo $fishql_dbfile
+        #echo "Existing fish history query langauge DB $fishql_db file:"
+        #echo $fishql_dbfile
         fishql-session
         return
     end
-    echo "Initialize fish history query language DB $fishql_db file:"
-    echo $fishql_dbfile
+    #echo "Initialize fish history query language DB $fishql_db file:"
+    #echo $fishql_dbfile
     echo "
     CREATE TABLE sessions ( 
       id integer primary key autoincrement, 
