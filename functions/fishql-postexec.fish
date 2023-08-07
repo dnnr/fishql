@@ -17,7 +17,7 @@ function fishql-postexec --on-event fish_postexec -d "Store final info about a c
     # echo $cmd
     # echo "========="
 
-    printf "
+    echo "
 .timeout $_fishql_timeout
 INSERT INTO 
 commands('session_id', 'shell_level', 'command_no', 'tty', 'euid', 'cwd', 'rval', 'start_time', 'end_time', 'duration', 'pipe_cnt', 'pipe_vals', 'command')
