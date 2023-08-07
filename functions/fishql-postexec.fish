@@ -13,10 +13,6 @@ function fishql-postexec --on-event fish_postexec -d "Store final info about a c
     set -l et (date +%s)
     set -l dt (math $CMD_DURATION / 1000.0)
 
-    # echo "========="
-    # echo $cmd
-    # echo "========="
-
     echo "
 .timeout $_fishql_timeout
 INSERT INTO 

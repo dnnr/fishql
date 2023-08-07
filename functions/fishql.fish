@@ -5,7 +5,6 @@ function fishql -a cmd
         source $mydir/fishql-preexec.fish
         source $mydir/fishql-postexec.fish
         if not set -q fishql_db
-            #echo "using fishql database 'default'"
             set -g fishql_db default
         end
         return
