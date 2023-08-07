@@ -12,7 +12,7 @@ function fishql-session -d "Start a fishql session"
 
 
     set -l hn (hostname)
-    set -l hni (hostname -I)
+    set -l hni (_fishql_hni)
     set -l ppid (ps -o ppid -p $fish_pid)[2]
     set -l tz (date +%Z)
     set -l sst (date +%s)
@@ -34,4 +34,13 @@ function fishql-session -d "Start a fishql session"
     set -g _fishql_command_id 0
     set -g _fishql_session_id (echo 'select seq from sqlite_sequence where name="sessions"'|fishql-query)
 
+end
+
+function _fishql_hni
+    switch (uname)
+        case Darwin
+            echo ""
+        case '*'
+            hostname -I
+    end
 end
