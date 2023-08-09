@@ -112,7 +112,7 @@ function _fishql_postexec --on-event fish_postexec -d "Store final info about a 
         _fishql_init
     end
 
-    set -l cmd (echo $argv | sed -e "s/'/''/g")
+    set -l cmd (echo $argv | sed -e "s/'/''/g" | string trim)
     set -l et (date +%s)
     set -l dt (math $CMD_DURATION / 1000.0)
 
