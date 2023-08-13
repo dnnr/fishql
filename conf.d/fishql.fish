@@ -1,1 +1,3 @@
-fishql init
+if status is-interactive
+    fishql init
+end
