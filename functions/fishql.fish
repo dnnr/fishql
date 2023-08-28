@@ -88,7 +88,7 @@ function _fishql_begin_session -d "Start new fishql session"
     set -g _fishql_session_euid (id -u)
     set -g _fishql_session_start (date +%s)
     set -g _fishql_command_id 0
-    set -g _fishql_session_id (echo 'select seq from sqlite_sequence where name="sessions"'|fishql-query)
+    set -g _fishql_session_id (echo "select seq from sqlite_sequence where name='sessions'"|fishql-query)
 end
 
 function _fishql_preexec --on-event fish_preexec
