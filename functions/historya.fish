@@ -1,10 +1,14 @@
-function historya
+function historya -d "Dump the full recorded command history"
     set pipecmd "cat"
     if isatty 1
         set pipecmd "less"
     end
 
-    echo -e ".separator '  '\nSELECT strftime('%Y-%m-%d %H:%M:%S', start_time, 'unixepoch', 'localtime'), command FROM commands ORDER BY start_time ASC, id ASC" \
+    # The two-space ELSE pads for the double-width emoji so the timestamp
+    # column still lines up; may need tweaking for a given terminal/font.
+    set query "SELECT CASE WHEN s.command IS NULL THEN '  ' ELSE '🚫' END, strftime('%Y-%m-%d %H:%M:%S', c.start_time, 'unixepoch', 'localtime'), c.command FROM commands c LEFT JOIN suppressions s ON s.command = c.command ORDER BY c.start_time ASC, c.id ASC"
+
+    echo -e ".separator '  '\n$query" \
         | fishql-query \
         | eval $pipecmd
 end

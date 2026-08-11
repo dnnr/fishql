@@ -14,8 +14,31 @@ end
 function _fishql_init -d "Initialize fishql database and session"
     set -g fishql_dbfile $__fish_user_data_dir/fishql.db
 
+    # Schema version this copy of fishql expects. Bump it and add a matching
+    # step to _fishql_migrate whenever the schema changes.
+    set -g _fishql_schema_target 1
+
     if not test -s "$fishql_dbfile"
-        echo "
+        # A brand new DB gets the original (v0) schema and is then brought up to
+        # date by the migration path in _fishql_begin_session, exactly like an
+        # already existing one. Creating the *current* schema directly here
+        # would let fresh and migrated databases drift apart.
+        if _fishql_create_v0
+            chmod 600 $fishql_dbfile
+            # Suppresses the "upgrading" notice below: a new DB is empty, so
+            # bringing it to the current version is instant and unremarkable.
+            set -g _fishql_db_created 1
+        end
+    end
+
+    _fishql_begin_session
+end
+
+function _fishql_create_v0 -d "Create the original fishql schema (schema version 0)"
+    # Kept verbatim on purpose: this is the schema as it shipped before
+    # versioning existed, so that migrating an old DB and creating a new one
+    # arrive at exactly the same place. Don't edit it -- add a migration step.
+    echo "
         CREATE TABLE sessions (
           id integer primary key autoincrement,
           hostname varchar(128),
@@ -53,10 +76,79 @@ function _fishql_init -d "Initialize fishql database and session"
           UNIQUE(session_id, command_no)
         );
         " | fishql-query
-        chmod 600 $fishql_dbfile
+end
+
+function _fishql_migrate -a from -d "Bring the fishql DB schema up to _fishql_schema_target"
+    # Only worth announcing for a pre-existing DB: index builds there can stall
+    # this one shell launch for a moment. A DB we just created is empty.
+    if set -q _fishql_db_created
+        set -e _fishql_db_created
+    else
+        echo "fishql: upgrading database schema (one-time, may take a moment)" >&2
     end
 
-    _fishql_begin_session
+    # Each step is guarded by the version we started from and bumps the version
+    # itself, so an interrupted upgrade resumes from where it stopped.
+    if test $from -lt 1
+        _fishql_migrate_1
+        or return 1
+    end
+    # Future steps go here, guarded the same way:
+    #   if test $from -lt 2
+    #       _fishql_migrate_2
+    #       or return 1
+    #   end
+end
+
+function _fishql_migrate_1 -d "Schema v1: command suppression list"
+    # Every statement is IF NOT EXISTS and the version bump rides inside the
+    # same transaction, so shells racing at login cannot corrupt anything: one
+    # takes the write lock, the rest wait on it and then find nothing to do.
+    # PRAGMA user_version is transactional, so a failure part-way through can
+    # never leave the version stamped without the schema it promises.
+    #
+    # Migrations must stay ADDITIVE ONLY. This config is deployed to many
+    # machines, so an older copy of fishql has to keep working against a DB
+    # that a newer copy has already migrated.
+    # sqlite3 only recognises dot-commands at the very start of a line, so the
+    # two below must stay unindented no matter how odd it looks here.
+    echo ".bail on
+.timeout 5000
+BEGIN IMMEDIATE;
+
+    -- Append-only log of suppress/un-suppress actions. A row existing here does
+    -- NOT mean the command is currently suppressed -- the latest action per
+    -- command wins. Always read current state through the suppressions view.
+    CREATE TABLE IF NOT EXISTS suppression_log (
+      id integer primary key autoincrement,
+      command varchar(1000) not null,
+      action varchar(10) not null,
+      action_time integer not null,
+      note text,
+      session_id integer
+    );
+    CREATE INDEX IF NOT EXISTS suppression_log_cmd_id_idx ON suppression_log(command, id);
+
+    -- Speeds up the GROUP BY command that the history search does.
+    CREATE INDEX IF NOT EXISTS commands_command_idx ON commands(command);
+
+    -- The one definition of 'currently suppressed'. Exposes the log id so
+    -- callers can tell which log entry is the effective one.
+    CREATE VIEW IF NOT EXISTS suppressions AS
+      SELECT id, command, action_time, note FROM (
+        SELECT id, command, action, action_time, note,
+               ROW_NUMBER() OVER (PARTITION BY command ORDER BY id DESC) AS rn
+        FROM suppression_log
+      ) WHERE rn = 1 AND action = 'suppress';
+
+    PRAGMA user_version = 1;
+    COMMIT;
+    " | fishql-query
+
+    if test $status -ne 0
+        echo "fishql: schema upgrade to v1 failed; suppression features unavailable" >&2
+        return 1
+    end
 end
 
 function _fishql_begin_session -d "Start new fishql session"
@@ -75,11 +167,22 @@ function _fishql_begin_session -d "Start new fishql session"
     set -l uid (id -u)
     set -l nid (id -un)
 
-    echo "
+    # One sqlite3 invocation does all three jobs: report the schema version,
+    # record this session, and hand back its id. Asking for the id on the same
+    # connection is what makes last_insert_rowid() usable, and that is race
+    # free -- reading sqlite_sequence in a separate process could return
+    # another shell's id when two sessions start at the same moment.
+    # The timeout matters on the very first launch after an upgrade: another
+    # shell may be holding the write lock to build an index, and without it
+    # this insert fails instantly and the session goes unrecorded. Must stay
+    # unindented -- sqlite3 only honours dot-commands at the start of a line.
+    set -l out (echo ".timeout 5000
+    PRAGMA user_version;
     INSERT INTO
     sessions('hostname', 'ppid', 'pid', 'time_zone', 'start_time', 'tty', 'uid', 'euid', 'logname', 'shell', 'sudo_user', 'sudo_uid', 'ssh_client', 'ssh_connection')
-    VALUES('$hn', '$ppid', '$fish_pid', '$tz', '$sst', '$tty', '$rid', '$uid', '$nid', '$SHELL', '', '', '$SSH_CLIENT', '$SSH_CONNECTION')
-    " | fishql-query
+    VALUES('$hn', '$ppid', '$fish_pid', '$tz', '$sst', '$tty', '$rid', '$uid', '$nid', '$SHELL', '', '', '$SSH_CLIENT', '$SSH_CONNECTION');
+    SELECT last_insert_rowid();
+    " | fishql-query)
 
     # Reuse the values gathered above rather than re-running tty/id/date.
     set -g _fishql_timeout 1000
@@ -87,7 +190,24 @@ function _fishql_begin_session -d "Start new fishql session"
     set -g _fishql_session_euid $uid
     set -g _fishql_session_start $sst
     set -g _fishql_command_id 0
-    set -g _fishql_session_id (echo 'select seq from sqlite_sequence where name=\'sessions\'' | fishql-query)
+    set -g _fishql_session_id $out[2]
+
+    if not string match -qr '^[1-9][0-9]*$' -- "$_fishql_session_id"
+        set -g _fishql_session_id ""
+        echo "fishql: could not record session; commands will not be linked to one" >&2
+    end
+
+    # Free schema check: the version came back with the insert above. Record the
+    # effective version too, so the query front-ends can tell whether the
+    # suppression schema exists without paying for another sqlite3 call.
+    set -g _fishql_db_version $out[1]
+    if set -q _fishql_schema_target
+        and string match -qr '^[0-9]+$' -- "$out[1]"
+        and test $out[1] -lt $_fishql_schema_target
+        if _fishql_migrate $out[1]
+            set -g _fishql_db_version $_fishql_schema_target
+        end
+    end
 end
 
 function _fishql_preexec --on-event fish_preexec
