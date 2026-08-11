@@ -81,7 +81,7 @@ function _fishql_begin_session -d "Start new fishql session"
     VALUES('$hn', '$ppid', '$fish_pid', '$tz', '$sst', '$tty', '$rid', '$uid', '$nid', '$SHELL', '', '', '$SSH_CLIENT', '$SSH_CONNECTION')
     " | fishql-query
 
-    set -g _fishql_timeout 100
+    set -g _fishql_timeout 1000
     set -g _fishql_session_tty (tty)
     set -g _fishql_session_euid (id -u)
     set -g _fishql_session_start (date +%s)
