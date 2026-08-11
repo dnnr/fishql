@@ -81,10 +81,11 @@ function _fishql_begin_session -d "Start new fishql session"
     VALUES('$hn', '$ppid', '$fish_pid', '$tz', '$sst', '$tty', '$rid', '$uid', '$nid', '$SHELL', '', '', '$SSH_CLIENT', '$SSH_CONNECTION')
     " | fishql-query
 
+    # Reuse the values gathered above rather than re-running tty/id/date.
     set -g _fishql_timeout 1000
-    set -g _fishql_session_tty (tty)
-    set -g _fishql_session_euid (id -u)
-    set -g _fishql_session_start (date +%s)
+    set -g _fishql_session_tty $tty
+    set -g _fishql_session_euid $uid
+    set -g _fishql_session_start $sst
     set -g _fishql_command_id 0
     set -g _fishql_session_id (echo 'select seq from sqlite_sequence where name=\'sessions\'' | fishql-query)
 end
