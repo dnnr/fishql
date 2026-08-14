@@ -41,38 +41,38 @@ function _fishql_create_v0 -d "Create the original fishql schema (schema version
     echo "
         CREATE TABLE sessions (
           id integer primary key autoincrement,
-          hostname varchar(128),
+          hostname varchar,
           ppid int(5) not null,
           pid int(5) not null,
           time_zone str(3) not null,
           start_time integer not null,
           end_time integer,
           duration integer,
-          tty varchar(20) not null,
+          tty varchar not null,
           uid int(16) not null,
           euid int(16) not null,
-          logname varchar(48),
-          shell varchar(50) not null,
-          sudo_user varchar(48),
+          logname varchar,
+          shell varchar not null,
+          sudo_user varchar,
           sudo_uid int(16),
-          ssh_client varchar(60),
-          ssh_connection varchar(100)
+          ssh_client varchar,
+          ssh_connection varchar
         );
         CREATE TABLE commands (
           id integer primary key autoincrement,
           session_id integer,
           shell_level integer,
           command_no integer,
-          tty varchar(20),
+          tty varchar,
           euid int(16),
-          cwd varchar(256),
+          cwd varchar,
           rval int(5),
           start_time integer,
           end_time integer not null,
           duration integer,
           pipe_cnt int(3),
-          pipe_vals varchar(80),
-          command varchar(1000) not null,
+          pipe_vals varchar,
+          command varchar not null,
           UNIQUE(session_id, command_no)
         );
         " | fishql-query
@@ -121,8 +121,8 @@ BEGIN IMMEDIATE;
     -- command wins. Always read current state through the suppressions view.
     CREATE TABLE IF NOT EXISTS suppression_log (
       id integer primary key autoincrement,
-      command varchar(1000) not null,
-      action varchar(10) not null,
+      command varchar not null,
+      action varchar not null,
       action_time integer not null,
       note text,
       session_id integer
