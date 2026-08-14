@@ -19,7 +19,6 @@ function _fishql_init -d "Initialize fishql database and session"
         CREATE TABLE sessions (
           id integer primary key autoincrement,
           hostname varchar(128),
-          host_ip varchar(40),
           ppid int(5) not null,
           pid int(5) not null,
           time_zone str(3) not null,
@@ -67,8 +66,7 @@ function _fishql_begin_session -d "Start new fishql session"
         return 1
     end
 
-    set -l hn (hostname)
-    set -l hni (_fishql_hni)
+    set -l hn $hostname
     set -l ppid (ps -o ppid -p $fish_pid)[2]
     set -l tz (date +%Z)
     set -l sst (date +%s)
@@ -79,8 +77,8 @@ function _fishql_begin_session -d "Start new fishql session"
 
     echo "
     INSERT INTO
-    sessions('hostname', 'host_ip', 'ppid', 'pid', 'time_zone', 'start_time', 'tty', 'uid', 'euid', 'logname', 'shell', 'sudo_user', 'sudo_uid', 'ssh_client', 'ssh_connection')
-    VALUES('$hn', '$hni', '$ppid', '$fish_pid', '$tz', '$sst', '$tty', '$rid', '$uid', '$nid', '$SHELL', '', '', '$SSH_CLIENT', '$SSH_CONNECTION')
+    sessions('hostname', 'ppid', 'pid', 'time_zone', 'start_time', 'tty', 'uid', 'euid', 'logname', 'shell', 'sudo_user', 'sudo_uid', 'ssh_client', 'ssh_connection')
+    VALUES('$hn', '$ppid', '$fish_pid', '$tz', '$sst', '$tty', '$rid', '$uid', '$nid', '$SHELL', '', '', '$SSH_CLIENT', '$SSH_CONNECTION')
     " | fishql-query
 
     set -g _fishql_timeout 100
@@ -121,14 +119,4 @@ function _fishql_postexec --on-event fish_postexec -d "Store final info about a 
         commands('session_id', 'shell_level', 'command_no', 'tty', 'euid', 'cwd', 'rval', 'start_time', 'end_time', 'duration', 'pipe_cnt', 'pipe_vals', 'command')
         VALUES('$_fishql_session_id', '$SHLVL', '$_fishql_command_id', '$_fishql_session_tty', '$_fishql_session_euid', '$_fishql_command_cwd', '$ec', '$_fishql_command_start', '$et', '$dt', '$pipestatus', '', '$cmd')
     " | fishql-query
-end
-
-function _fishql_hni -d 'Helper to determine current IP addresses'
-    switch (uname)
-        case Darwin
-            # hostname -I doesn't work on MacOS and there's no simple substitute either
-            echo ""
-        case '*'
-            hostname -I
-    end
 end
